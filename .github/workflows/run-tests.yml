@@ -1,0 +1,51 @@
+name: Run autotests
+
+# Когда запускать workflow
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:        # ручной запуск кнопкой в GitHub
+
+jobs:
+  tests:
+    # 1. Установка ОС: виртуальная машина с Ubuntu
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: [ "3.12", "3.13" ]
+
+    steps:
+      # 2. Скачивание кода репозитория
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 3. Установка Python
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # 4. Установка зависимостей
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 5. Запуск тестов с помощью pytest
+      - name: Run unit tests
+        run: pytest tests/unit --junitxml=report-unit.xml
+
+      - name: Run API tests
+        run: pytest tests/api --junitxml=report-api.xml
+
+      # 6. Сохранение отчётов о тестах как артефакт
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-py${{ matrix.python-version }}
+          path: report-*.xml
